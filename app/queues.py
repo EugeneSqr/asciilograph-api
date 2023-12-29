@@ -58,7 +58,7 @@ async def _consume_process_image_callback_queue(
             return
         future.set_result(message.body.decode())
 
-    await callback_queue.consume(on_response, timeout=get_settings().timeout_seconds)
+    await callback_queue.consume(on_response, timeout=get_settings().timeout_seconds, no_ack=True)
     return future
 
 @asynccontextmanager
