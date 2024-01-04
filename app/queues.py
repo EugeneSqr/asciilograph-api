@@ -1,6 +1,6 @@
+import logging
 import asyncio
 from asyncio import Future
-from uuid import uuid4
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Awaitable
 
@@ -31,19 +31,20 @@ async def process_image(image_key: str) -> str:
     async with _get_channel() as channel:
         callback_queue = await channel.declare_queue(exclusive=True,
                                                      timeout=get_settings().timeout_seconds)
-        correlation_id = str(uuid4())
-        callback_awaitable = await _consume_process_image_callback_queue(callback_queue,
-                                                                         correlation_id)
+        logging.info(f"callback queue declared: {callback_queue.name}")
+        callback_awaitable = await _consume_process_image_callback_queue(callback_queue, image_key)
+        logging.info(f"requesting image processing for image_key={image_key}")
         await channel.default_exchange.publish(
             Message(
                 image_key.encode(),
                 content_type="text/plain",
-                correlation_id=correlation_id,
+                correlation_id=image_key,
                 reply_to=callback_queue.name,
             ),
             routing_key=get_settings().rabbitmq_image_processing_queue,
         )
         async with asyncio.timeout(get_settings().timeout_seconds):
+            logging.info(f"awaiting result for image_key={image_key}")
             return await callback_awaitable
 
 async def _consume_process_image_callback_queue(
@@ -52,10 +53,11 @@ async def _consume_process_image_callback_queue(
 ) -> Awaitable[str]:
     future: Future[str] = asyncio.get_running_loop().create_future()
     async def on_response(message: AbstractIncomingMessage) -> None:
-        # TODO: consider using message.process context manager to reject if something goes wrong
         if message.correlation_id != correlation_id:
-            # TODO: logging
+            logging.info(f"got correlation_id={message.correlation_id} instead of {correlation_id} "
+                         f"in the '{callback_queue.name}' queue. Skipping")
             return
+        logging.info(f"got result for image_key={correlation_id}")
         future.set_result(message.body.decode())
 
     await callback_queue.consume(on_response, timeout=get_settings().timeout_seconds, no_ack=True)
