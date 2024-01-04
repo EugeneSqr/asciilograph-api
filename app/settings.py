@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     rabbitmq_image_processing_queue: str
     rabbitmq_connection_pool_size: int = 100
     timeout_seconds: int = 5
+    fileserver_address: str
+    fileserver_user: str
+    fileserver_password: str
 
 @lru_cache
 def get_settings() -> Settings:

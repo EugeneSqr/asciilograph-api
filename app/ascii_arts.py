@@ -1,19 +1,13 @@
 from typing import Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from queues import process_image
+from fileserver import store_image
 
 
 router = APIRouter()
 
-@router.get("/ascii_arts")
-async def get_ascii_arts() -> Dict[str, str]:
-    return {"Hello": await _image_to_ascii_art()}
-
-async def _image_to_ascii_art() -> str:
-    image_key = await _store_image()
-    return await process_image(image_key)
-
-async def _store_image() -> str:
-    return "image key"
+@router.post("/ascii_arts")
+async def get_ascii_arts(request: Request) -> Dict[str, str]:
+    return {"Hello": await process_image(await store_image(request.stream()))}
