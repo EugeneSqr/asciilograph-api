@@ -21,9 +21,9 @@ def _configure_logging() -> None:
         "disable_existing_loggers": False,
         "filters": {
             "correlation_id": {
-            "()": "asgi_correlation_id.CorrelationIdFilter",
-            "uuid_length": 32,
-            "default_value": "-",
+                "()": "asgi_correlation_id.CorrelationIdFilter",
+                "uuid_length": 32,
+                "default_value": "-",
             },
         },
         "formatters": {
