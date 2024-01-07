@@ -1,5 +1,6 @@
 import logging
 from typing import AsyncIterator
+from contextlib import asynccontextmanager
 
 import aioftp
 from asgi_correlation_id import correlation_id
@@ -7,7 +8,8 @@ from asgi_correlation_id import correlation_id
 from settings import get_settings
 
 
-async def store_image(request_stream: AsyncIterator[bytes]) -> str:
+@asynccontextmanager
+async def store_image(request_stream: AsyncIterator[bytes]) -> AsyncIterator[str]:
     settings = get_settings()
     filename = correlation_id.get() or ""
     logging.info(f"uploading file {filename} to {settings.fileserver_address} "
@@ -18,5 +20,10 @@ async def store_image(request_stream: AsyncIterator[bytes]) -> str:
         async with ftp_client.upload_stream(filename) as upload_stream:
             async for file_chunk in request_stream:
                 await upload_stream.write(file_chunk)
-    logging.info(f"done uploading file {filename}")
-    return filename
+        logging.info(f"done uploading file {filename}")
+        try:
+            yield filename
+        finally:
+            logging.info(f"discarding image {filename}")
+            await ftp_client.remove(filename)
+            logging.info(f"done discarding image {filename}")

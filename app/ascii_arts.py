@@ -9,4 +9,5 @@ router = APIRouter()
 
 @router.post("/ascii_arts", response_class=PlainTextResponse)
 async def create_ascii_art(request: Request) -> str:
-    return await process_image(await store_image(request.stream()))
+    async with store_image(request.stream()) as image_key:
+        return await process_image(image_key)
